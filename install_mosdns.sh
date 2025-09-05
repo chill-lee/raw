@@ -44,13 +44,34 @@ echo ">>> 解压 mosdns 到 $INSTALL_DIR..."
 unzip -o "$ZIP_FILE" -d "$INSTALL_DIR"
 rm -f "$ZIP_FILE"
 
-# 8. 备份旧配置并写入新配置
+# 8. 备份旧配置
 if [ -f "$CONFIG_FILE" ]; then
     BACKUP_FILE="${CONFIG_FILE}.bak.$(date +%Y%m%d%H%M%S)"
     cp "$CONFIG_FILE" "$BACKUP_FILE"
     echo "已备份旧配置为 $BACKUP_FILE"
 fi
 
+# 9. 获取主机名并查找证书
+HOSTNAME=$(hostname)
+CERT_DIRS=("/root/cert" "/etc/letsencrypt/live/$HOSTNAME")
+CERT_FILE=""
+KEY_FILE=""
+
+for dir in "${CERT_DIRS[@]}"; do
+    if [ -f "$dir/fullchain.pem" ] && [ -f "$dir/privkey.pem" ]; then
+        CERT_FILE="$dir/fullchain.pem"
+        KEY_FILE="$dir/privkey.pem"
+        break
+    fi
+done
+
+if [ -z "$CERT_FILE" ] || [ -z "$KEY_FILE" ]; then
+    echo "未找到 SSL 证书，请确认 $CERT_DIRS 下有 fullchain.pem 和 privkey.pem"
+    CERT_FILE="/root/cert/$HOSTNAME/fullchain.pem"   # 占位路径
+    KEY_FILE="/root/cert/$HOSTNAME/privkey.pem"
+fi
+
+# 10. 写入新的配置文件
 echo ">>> 写入新的配置文件 $CONFIG_FILE..."
 cat > "$CONFIG_FILE" <<EOF
 log:
@@ -66,27 +87,33 @@ plugins:
 servers:
     - exec: forward_google
       listeners:
-        - addr: 0.0.0.0:5533
+        - addr: ":5533"
           protocol: udp
-        - addr: 0.0.0.0:5533
+        - addr: ":5533"
           protocol: tcp
+        - addr: ":5300"
+          protocol: https
+          idle_timeout: 10
+          cert: "$CERT_FILE"
+          key: "$KEY_FILE"
+          url_path: "/dns-query"
 EOF
 
-# 9. 确保 mosdns 可执行
+# 11. 确保 mosdns 可执行
 chmod +x "$INSTALL_DIR/mosdns"
 
-# 10. 安装 systemd 服务
+# 12. 安装 systemd 服务
 echo ">>> 安装 systemd 服务..."
 cd "$INSTALL_DIR"
 ./mosdns service install -d "$INSTALL_DIR" -c "$CONFIG_FILE" || echo "服务已存在，跳过安装。"
 
-# 11. 更新 PATH
+# 13. 更新 PATH
 if ! grep -q "/etc/mosdns" /etc/profile; then
     echo 'export PATH=\$PATH:/etc/mosdns' >> /etc/profile
     export PATH=$PATH:/etc/mosdns
 fi
 
-# 12. 启动服务
+# 14. 启动服务
 systemctl daemon-reload
 systemctl enable mosdns
 systemctl restart mosdns
