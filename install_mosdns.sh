@@ -106,7 +106,7 @@ chmod +x "$INSTALL_DIR/mosdns"
 echo ">>> 安装 systemd 服务..."
 cd "$INSTALL_DIR"
 
-if systemctl list-units --full -all | grep -q '^mosdns.service'; then
+if systemctl list-unit-files | grep -q '^mosdns.service'; then
     echo "服务已存在，先卸载旧服务..."
     ./mosdns service uninstall || echo "卸载失败或服务不存在，继续..."
 fi
