@@ -67,8 +67,8 @@ done
 
 if [ -z "$CERT_FILE" ] || [ -z "$KEY_FILE" ]; then
     echo "未找到 SSL 证书，请确认 $CERT_DIRS 下有 fullchain.pem 和 privkey.pem"
-    CERT_FILE="/root/cert/$HOSTNAME/fullchain.pem"   # 占位路径
-    KEY_FILE="/root/cert/$HOSTNAME/privkey.pem"
+    CERT_FILE="/root/cert/$HOSTNAME.chilllee.site/fullchain.pem"   # 占位路径
+    KEY_FILE="/root/cert/$HOSTNAME.chilllee.site/privkey.pem"
 fi
 
 # 10. 写入新的配置文件
@@ -102,18 +102,18 @@ EOF
 # 11. 确保 mosdns 可执行
 chmod +x "$INSTALL_DIR/mosdns"
 
-# 12. 安装 systemd 服务
+# 12. 安装 systemd 服务（如果已存在则先卸载再安装）
 echo ">>> 安装 systemd 服务..."
 cd "$INSTALL_DIR"
-./mosdns service install -d "$INSTALL_DIR" -c "$CONFIG_FILE" || echo "服务已存在，跳过安装。"
 
-# 13. 更新 PATH
-if ! grep -q "/etc/mosdns" /etc/profile; then
-    echo 'export PATH=\$PATH:/etc/mosdns' >> /etc/profile
-    export PATH=$PATH:/etc/mosdns
+if systemctl list-units --full -all | grep -q '^mosdns.service'; then
+    echo "服务已存在，先卸载旧服务..."
+    ./mosdns service uninstall || echo "卸载失败或服务不存在，继续..."
 fi
 
-# 14. 启动服务
+./mosdns service install -d "$INSTALL_DIR" -c "$CONFIG_FILE"
+
+# 13. 启动服务
 systemctl daemon-reload
 systemctl enable mosdns
 systemctl restart mosdns
