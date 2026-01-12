@@ -67,8 +67,8 @@ done
 
 if [ -z "$CERT_FILE" ] || [ -z "$KEY_FILE" ]; then
     echo "未找到 SSL 证书，请确认 $CERT_DIRS 下有 fullchain.pem 和 privkey.pem"
-    CERT_FILE="/root/cert/$HOSTNAME.chilllee.site/fullchain.pem"   # 占位路径
-    KEY_FILE="/root/cert/$HOSTNAME.chilllee.site/privkey.pem"
+    CERT_FILE="/root/cert/$HOSTNAME.950809.xyz/fullchain.pem"   # 占位路径
+    KEY_FILE="/root/cert/$HOSTNAME.950809.xyz/privkey.pem"
 fi
 
 # 10. 写入新的配置文件
